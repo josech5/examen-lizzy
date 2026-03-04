@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arte Quiz — Historia de la Pintura</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1209; --parchment: #f5eed8; --gold: #c9922a; --gold-light: #e8c56a;
+    --rust: #8b3a1e; --sage: #5a6b4a; --cream: #fdf8ec; --shadow: rgba(26,18,9,0.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background: radial-gradient(ellipse at 10% 20%, rgba(201,146,42,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 80%, rgba(139,58,30,0.06) 0%, transparent 50%);
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; position: relative; z-index: 1; }
+
+  /* HEADER */
+  header { text-align: center; padding: 3rem 0 2rem; border-bottom: 2px solid var(--gold); margin-bottom: 2.5rem; }
+  header::after { content: '❧'; display: block; color: var(--gold); font-size: 1.4rem; margin-top: 1rem; }
+  h1 { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; line-height: 1.1; }
+  h1 span { display: block; font-style: italic; color: var(--gold); font-size: 0.65em; font-weight: 400; letter-spacing: 0.05em; }
+  .subtitle { margin-top: 0.75rem; color: #6b5e45; font-size: 0.95rem; font-weight: 300; }
+
+  /* LOADING SCREEN */
+  #loading-screen { text-align: center; padding: 4rem 2rem; animation: fadeIn 0.4s ease; }
+  .spinner { width: 48px; height: 48px; border: 3px solid #e8dfc8; border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.5rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: #8a7550; margin-bottom: 0.5rem; }
+  .loading-sub { font-size: 0.85rem; color: #b09060; }
+  .load-progress { margin-top: 1.5rem; height: 4px; background: #e8dfc8; border-radius: 2px; overflow: hidden; max-width: 300px; margin-left: auto; margin-right: auto; }
+  .load-fill { height: 100%; background: linear-gradient(to right, var(--gold-light), var(--gold)); border-radius: 2px; transition: width 0.3s ease; }
+
+  /* SETUP */
+  #setup-screen { display:none; animation: fadeIn 0.5s ease; }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.75rem; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, var(--gold), transparent); }
+  .periods-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 2rem; }
+  .period-card { background: var(--parchment); border: 1.5px solid #d4c49a; border-radius: 8px; padding: 0.875rem 1rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.625rem; font-size: 0.9rem; position: relative; overflow: hidden; }
+  .period-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--gold-light), var(--gold)); opacity: 0; transition: opacity 0.2s; }
+  .period-card.selected { border-color: var(--gold); font-weight: 500; box-shadow: 0 2px 12px rgba(201,146,42,0.25); }
+  .period-card.selected::before { opacity: 0.15; }
+  .period-card:hover:not(.selected) { border-color: var(--gold); transform: translateY(-1px); }
+  .check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #c4b48a; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; z-index: 1; background: white; transition: all 0.2s; font-size: 0.65rem; }
+  .period-card.selected .check { background: var(--gold); border-color: var(--gold); color: white; }
+  .period-card .label { position: relative; z-index: 1; line-height: 1.3; }
+  .period-card .count { position: relative; z-index: 1; margin-left: auto; font-size: 0.75rem; color: #9a8660; background: rgba(0,0,0,0.06); padding: 0.1rem 0.4rem; border-radius: 10px; }
+  .select-all-row { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .btn-link { background: none; border: none; color: var(--gold); cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.875rem; text-decoration: underline; padding: 0; }
+  .info-box { background: #fdf3e0; border: 1px solid #e8c56a; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.85rem; color: #7a5c20; margin-bottom: 1.5rem; line-height: 1.5; }
+  .settings-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2.5rem; align-items: flex-end; }
+  .setting-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .setting-group label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8a7550; font-weight: 500; }
+  .setting-group input[type="number"] { padding: 0.5rem 0.75rem; border: 1.5px solid #d4c49a; border-radius: 6px; background: var(--parchment); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; color: var(--ink); outline: none; min-width: 160px; }
+  .setting-group input:focus { border-color: var(--gold); }
+  .ornament { text-align: center; color: var(--gold); font-size: 1.1rem; opacity: 0.5; margin: 1.5rem 0; letter-spacing: 0.5rem; }
+
+  /* BUTTONS */
+  .btn-primary { background: linear-gradient(135deg, var(--gold) 0%, #a8751a 100%); color: white; border: none; padding: 0.875rem 2.5rem; border-radius: 8px; font-family: 'Playfair Display', serif; font-size: 1.1rem; font-style: italic; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(168,117,26,0.3); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(168,117,26,0.4); }
+  .btn-secondary { background: var(--parchment); color: var(--ink); border: 1.5px solid #d4c49a; padding: 0.75rem 2rem; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+  .btn-secondary:hover { border-color: var(--gold); background: #fdf6e3; }
+
+  /* QUIZ */
+  #quiz-screen { display: none; animation: fadeIn 0.4s ease; }
+  .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+  .progress-info { font-size: 0.875rem; color: #8a7550; }
+  .progress-info strong { color: var(--gold); font-size: 1.1rem; }
+  .score-badge { background: var(--parchment); border: 1.5px solid var(--gold); padding: 0.375rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 500; }
+  .artwork-group-bar { background: var(--parchment); border: 1px solid #d4c49a; border-radius: 8px; padding: 0.5rem 1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem; font-size: 0.82rem; color: #7a6540; }
+  .art-dots { display: flex; gap: 4px; flex-wrap: wrap; }
+  .art-dot { width: 10px; height: 10px; border-radius: 50%; background: #d4c49a; transition: background 0.2s; flex-shrink: 0; }
+  .art-dot.done { background: var(--sage); }
+  .art-dot.active { background: var(--gold); }
+  .progress-bar { height: 4px; background: #e8dfc8; border-radius: 2px; margin-bottom: 2rem; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(to right, var(--gold-light), var(--gold)); border-radius: 2px; transition: width 0.5s ease; }
+
+  .question-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 40px var(--shadow); margin-bottom: 1.5rem; }
+  .artwork-display { position: relative; background: #1a1209; display: flex; align-items: center; justify-content: center; min-height: 280px; max-height: 420px; overflow: hidden; }
+  .artwork-display img { max-width: 100%; max-height: 420px; object-fit: contain; display: block; }
+  .img-placeholder { color: #9a8660; font-style: italic; font-size: 0.9rem; padding: 3rem; text-align: center; }
+
+  .subq-strip { display: flex; background: #f9f3e5; border-bottom: 1px solid #ede0c0; padding: 0.5rem 1.5rem; gap: 0.5rem; align-items: center; }
+  .subq-pip { width: 28px; height: 6px; border-radius: 3px; background: #e0d0a8; transition: background 0.3s; }
+  .subq-pip.done { background: var(--sage); }
+  .subq-pip.active { background: var(--gold); }
+  .subq-label { margin-left: auto; font-size: 0.78rem; color: #9a8660; font-style: italic; }
+
+  .question-body { padding: 1.75rem 2rem; }
+  @media (max-width: 560px) { .question-body { padding: 1.25rem; } }
+  .question-type-badge { display: inline-block; background: #f0e8d0; color: var(--gold); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; padding: 0.25rem 0.625rem; border-radius: 4px; margin-bottom: 0.875rem; }
+  .question-text { font-family: 'Playfair Display', serif; font-size: 1.25rem; margin-bottom: 1.5rem; line-height: 1.45; }
+  .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; }
+  @media (max-width: 560px) { .options-grid { grid-template-columns: 1fr; } }
+
+  .option-btn { background: var(--parchment); border: 1.5px solid #d4c49a; border-radius: 8px; padding: 0.875rem 1.1rem; text-align: left; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; color: var(--ink); transition: all 0.18s; line-height: 1.35; display: flex; align-items: flex-start; gap: 0.625rem; }
+  .opt-letter { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: white; border: 1px solid #c4b48a; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; color: #9a8660; margin-top: 1px; transition: all 0.18s; }
+  .option-btn:hover:not(:disabled) { border-color: var(--gold); background: #fdf6e3; transform: translateY(-1px); box-shadow: 0 3px 10px var(--shadow); }
+  .option-btn:hover:not(:disabled) .opt-letter { background: var(--gold-light); border-color: var(--gold); color: var(--ink); }
+  .option-btn.correct { background: #eaf5ea; border-color: var(--sage); color: #2d4a2d; }
+  .option-btn.correct .opt-letter { background: var(--sage); border-color: var(--sage); color: white; }
+  .option-btn.wrong { background: #faeaea; border-color: var(--rust); color: #5a1a1a; }
+  .option-btn.wrong .opt-letter { background: var(--rust); border-color: var(--rust); color: white; }
+  .option-btn:disabled { cursor: not-allowed; }
+
+  .feedback-bar { margin-top: 1.25rem; padding: 1rem 1.25rem; border-radius: 8px; font-size: 0.9rem; line-height: 1.5; display: none; }
+  .feedback-bar.correct { background: #eaf5ea; border: 1px solid #9dc49d; color: #2d4a2d; }
+  .feedback-bar.wrong { background: #faeaea; border: 1px solid #c49d9d; color: #5a1a1a; }
+  .feedback-bar strong { display: block; font-size: 1rem; margin-bottom: 0.25rem; font-family: 'Playfair Display', serif; }
+  .next-btn-row { text-align: right; margin-top: 1rem; display: none; }
+  .btn-next { background: var(--ink); color: var(--parchment); border: none; padding: 0.75rem 2rem; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+  .btn-next:hover { background: #2d2010; transform: translateX(2px); }
+
+  /* RESULTS */
+  #results-screen { display: none; text-align: center; animation: fadeIn 0.5s ease; }
+  .results-card { background: white; border-radius: 16px; padding: 3rem 2.5rem; box-shadow: 0 8px 40px var(--shadow); margin-bottom: 2rem; }
+  .score-circle { width: 130px; height: 130px; border-radius: 50%; background: conic-gradient(var(--gold) var(--pct,0%), #e8dfc8 0); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; position: relative; }
+  .score-circle::after { content: ''; position: absolute; width: 100px; height: 100px; background: white; border-radius: 50%; }
+  .score-number { position: relative; z-index: 1; font-family: 'Playfair Display', serif; font-size: 2.2rem; font-weight: 700; }
+  .score-number sub { font-size: 1rem; color: var(--gold); }
+  .result-title { font-family: 'Playfair Display', serif; font-size: 1.75rem; margin-bottom: 0.5rem; }
+  .result-subtitle { color: #8a7550; font-size: 0.95rem; margin-bottom: 2rem; }
+  .stats-row { display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; margin-bottom: 2rem; }
+  .stat { text-align: center; }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; color: var(--gold); display: block; }
+  .stat-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: #9a8660; }
+  .results-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .review-section { margin-top: 2.5rem; text-align: left; }
+  .review-artwork-group { background: white; border-radius: 12px; overflow: hidden; margin-bottom: 1rem; box-shadow: 0 2px 10px var(--shadow); }
+  .review-artwork-header { display: flex; gap: 1rem; align-items: center; padding: 0.875rem 1.25rem; background: #fdf8f0; border-bottom: 1px solid #ede0c0; }
+  .review-img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; flex-shrink: 0; background: #e8dfc8; }
+  .review-artwork-info h4 { font-family: 'Playfair Display', serif; font-size: 0.95rem; margin-bottom: 0.15rem; }
+  .review-artwork-info p { font-size: 0.8rem; color: #8a7550; }
+  .review-questions { padding: 0.25rem 0; }
+  .review-q-row { display: flex; align-items: center; padding: 0.5rem 1.25rem; gap: 0.75rem; font-size: 0.85rem; border-bottom: 1px solid #f5eedd; }
+  .review-q-row:last-child { border-bottom: none; }
+  .review-q-type { background: #f0e8d0; color: var(--gold); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.15rem 0.5rem; border-radius: 4px; flex-shrink: 0; min-width: 72px; text-align: center; }
+  .review-q-answer { flex: 1; color: #4a3a20; }
+  .review-q-result { flex-shrink: 0; font-size: 1.1rem; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+  .shake { animation: shake 0.4s ease; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Historia de la Pintura<span>Quiz Interactivo</span></h1>
+    <p class="subtitle">Tres preguntas por obra: título, autor y corriente artística</p>
+  </header>
+
+  <!-- LOADING SCREEN -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <div class="loading-text">Cargando obras de arte…</div>
+    <div class="loading-sub">Obteniendo imágenes desde Wikipedia</div>
+    <div class="load-progress"><div class="load-fill" id="load-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- SETUP SCREEN -->
+  <div id="setup-screen">
+    <div class="section-title">Elige los períodos a estudiar</div>
+    <div class="select-all-row">
+      <button class="btn-link" onclick="selectAll(true)">Seleccionar todos</button>
+      <button class="btn-link" onclick="selectAll(false)">Deseleccionar todos</button>
+    </div>
+    <div class="periods-grid" id="periods-grid"></div>
+    <div class="ornament">· · ·</div>
+    <div class="info-box">
+      📚 <strong>Formato:</strong> Por cada obra se generan <strong>3 preguntas seguidas</strong>: ¿Cómo se llama?, ¿Quién la pintó? y ¿A qué corriente pertenece?
+    </div>
+    <div class="settings-row">
+      <div class="setting-group">
+        <label>Número de obras por quiz</label>
+        <input type="number" id="num-artworks" value="8" min="3" max="30">
+      </div>
+      <button class="btn-primary" onclick="startQuiz()">Comenzar Quiz →</button>
+    </div>
+  </div>
+
+  <!-- QUIZ SCREEN -->
+  <div id="quiz-screen">
+    <div class="quiz-header">
+      <div class="progress-info">Pregunta <strong id="q-num">1</strong> de <strong id="q-total">24</strong></div>
+      <div class="score-badge">Aciertos: <span id="score-display">0</span></div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="artwork-group-bar">
+      <span id="artwork-name-label" style="font-style:italic;color:#8a6030;flex:1">Obra actual</span>
+      <div class="art-dots" id="artwork-dots"></div>
+    </div>
+    <div class="question-card">
+      <div class="artwork-display" id="artwork-display">
+        <div class="img-placeholder">Cargando obra…</div>
+      </div>
+      <div class="subq-strip">
+        <div class="subq-pip active" id="pip-0"></div>
+        <div class="subq-pip" id="pip-1"></div>
+        <div class="subq-pip" id="pip-2"></div>
+        <div class="subq-label" id="subq-label">Pregunta 1 de 3</div>
+      </div>
+      <div class="question-body">
+        <div class="question-type-badge" id="q-type-badge">Título</div>
+        <div class="question-text" id="question-text">¿?</div>
+        <div class="options-grid" id="options-grid"></div>
+        <div class="feedback-bar" id="feedback-bar"></div>
+        <div class="next-btn-row" id="next-btn-row">
+          <button class="btn-next" id="next-btn" onclick="nextQuestion()">Siguiente →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS SCREEN -->
+  <div id="results-screen">
+    <div class="results-card">
+      <div class="score-circle" id="score-circle">
+        <div class="score-number" id="final-score-num">0<sub>/24</sub></div>
+      </div>
+      <div class="result-title" id="result-title"></div>
+      <div class="result-subtitle" id="result-subtitle"></div>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-num" id="stat-correct">0</span><span class="stat-label">Correctas</span></div>
+        <div class="stat"><span class="stat-num" id="stat-wrong">0</span><span class="stat-label">Incorrectas</span></div>
+        <div class="stat"><span class="stat-num" id="stat-pct">0%</span><span class="stat-label">Porcentaje</span></div>
+      </div>
+      <div class="results-actions">
+        <button class="btn-primary" onclick="startQuiz()">Repetir Quiz</button>
+        <button class="btn-secondary" onclick="backToSetup()">Cambiar configuración</button>
+      </div>
+    </div>
+    <div class="review-section">
+      <div class="section-title">Revisión de respuestas</div>
+      <div id="review-list"></div>
+    </div>
+  </div>
+
+</div>
+<script>
+// ================================================================
+// ARTWORK DATABASE
+// wikiTitle = exact Wikipedia article title for thumbnail API
+// fallbackImg = direct URL used if API fails (with no-referrer)
+// ================================================================
+const ARTWORKS = [
+  // PREHISTORIA
+  { title:"Manos (Cueva de las Manos)", author:"Anónimo", period:"Prehistoria",
+    wikiTitle:"Cueva de las Manos",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Cave_of_the_Hands.jpg/500px-Cave_of_the_Hands.jpg" },
+  { title:"La gran cierva de Altamira", author:"Anónimo", period:"Prehistoria",
+    wikiTitle:"Cave of Altamira",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Altamira_Bison.jpg/500px-Altamira_Bison.jpg" },
+
+  // MESOPOTAMIA
+  { title:"Estandarte de Ur", author:"Anónimo", period:"Mesopotamia",
+    wikiTitle:"Standard of Ur",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Standard_of_Ur_-_War_side.jpg/500px-Standard_of_Ur_-_War_side.jpg" },
+  { title:"Puerta de Ishtar", author:"Anónimo", period:"Mesopotamia",
+    wikiTitle:"Ishtar Gate",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Ishtar_gate_in_Pergamon_museum.jpg/500px-Ishtar_gate_in_Pergamon_museum.jpg" },
+
+  // EGIPTO
+  { title:"Tumba de Nefertari", author:"Anónimo", period:"Egipto",
+    wikiTitle:"QV66",
+    fallbackImg:"https://egiptoprofundo.org/wp-content/uploads/2021/11/Juan-Adrada-Tumba-de-Nefertari-024.jpg" },
+  { title:"Las Ocas de Meidum", author:"Anónimo", period:"Egipto",
+    wikiTitle:"Meidum Geese",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Ocas_de_Meidum_%28completo_en_alta_resoluci%C3%B3n%29.jpg/1280px-Ocas_de_Meidum_%28completo_en_alta_resoluci%C3%B3n%29.jpg?_=20200330230936" },
+
+  // GRECIA
+  { title:"Príncipe de la flor de Lis", author:"Anónimo", period:"Grecia antigua",
+    wikiTitle:"Prince of the Lilies",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Knossos_Fresco_Priest-King.jpg/380px-Knossos_Fresco_Priest-King.jpg" },
+  { title:"Edipo interrogado por la esfinge", author:"Anónimo", period:"Grecia antigua",
+    wikiTitle:"Nigger",
+    fallbackImg:"https://eaqrmnkwok8.exactdn.com/wp-content/uploads/Edipo-y-la-Esfinge.jpg?strip=all&lossy=1&ssl=1" },
+
+  // ROMA
+  { title:"La poetisa de Pompeya", author:"Anónimo", period:"Roma",
+    wikiTitle:"Portrait of a young woman with a stylus",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Portrait_d%27une_jeune_femme%2C_dite_Sappho.jpg/250px-Portrait_d%27une_jeune_femme%2C_dite_Sappho.jpg" },
+  { title:"Fresco de la Primavera", author:"Anónimo", period:"Roma",
+    wikiTitle:"Flora (fresco)",
+    fallbackImg:"https://i.pinimg.com/474x/7f/ce/78/7fce78439b5f9ef8ddde9238008bb7a3.jpg" },
+  { title:"Batalla de Issos (mosaico)", author:"Anónimo", period:"Roma",
+    wikiTitle:"Alexander Mosaic",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Battle_of_Issus_mosaic_-_Museo_Archeologico_Nazionale_-_Naples_BW.jpg/500px-Battle_of_Issus_mosaic_-_Museo_Archeologico_Nazionale_-_Naples_BW.jpg" },
+
+  // EDAD MEDIA
+  { title:"Lamentación sobre Cristo muerto", author:"Giotto", period:"Edad Media",
+    wikiTitle:"Lamentation of Christ (Giotto)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Compianto_sul_Cristo_morto.jpg/500px-Compianto_sul_Cristo_morto.jpg" },
+  { title:"Anunciación entre los Santos Ansano y Margarita", author:"Simone Martini", period:"Edad Media",
+    wikiTitle:"Annunciation (Martini)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Simone_Martini_%E2%80%94_Annunciation_with_St._Margaret_and_St._Ansanus.jpg/330px-Simone_Martini_%E2%80%94_Annunciation_with_St._Margaret_and_St._Ansanus.jpg" },
+
+  // RENACIMIENTO
+  { title:"La Mona Lisa", author:"Leonardo da Vinci", period:"Renacimiento",
+    wikiTitle:"Mona Lisa",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/380px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg" },
+  { title:"La Última Cena", author:"Leonardo da Vinci", period:"Renacimiento",
+    wikiTitle:"The Last Supper (Leonardo)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/%C3%9Altima_Cena_-_Da_Vinci_5.jpg/500px-%C3%9Altima_Cena_-_Da_Vinci_5.jpg" },
+  { title:"Alegoría de la Primavera", author:"Sandro Botticelli", period:"Renacimiento",
+    wikiTitle:"Primavera (Botticelli)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Botticelli-primavera.jpg/500px-Botticelli-primavera.jpg" },
+  { title:"Nacimiento de Venus", author:"Sandro Botticelli", period:"Renacimiento",
+    wikiTitle:"The Birth of Venus (Botticelli)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg/1280px-Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg" },
+  { title:"Creación de Adán", author:"Miguel Ángel", period:"Renacimiento",
+    wikiTitle:"The Creation of Adam",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Michelangelo_-_Creation_of_Adam_%28cropped%29.jpg/500px-Michelangelo_-_Creation_of_Adam_%28cropped%29.jpg" },
+  { title:"El Juicio Final (Capilla Sixtina)", author:"Miguel Ángel", period:"Renacimiento",
+    wikiTitle:"The Last Judgment (Michelangelo)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Michelangelo_-_Last_Judgement.jpg/400px-Michelangelo_-_Last_Judgement.jpg" },
+  { title:"Flora", author:"Tiziano", period:"Renacimiento",
+    wikiTitle:"Flora (Titian)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Tizian_090.jpg/380px-Tizian_090.jpg" },
+  { title:"Dánae recibiendo la lluvia de oro", author:"Tiziano", period:"Renacimiento",
+    wikiTitle:"Danaë (Titian, Prado)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Tizian_-_Danae_receiving_the_Golden_Rain_-_Prado.jpg/500px-Tizian_-_Danae_receiving_the_Golden_Rain_-_Prado.jpg" },
+  { title:"El rapto de Elena", author:"Tintoretto", period:"Renacimiento",
+    wikiTitle:"The Abduction of Helen (Tintoretto)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Tintoretto_Rape_of_Helen.jpg/1280px-Tintoretto_Rape_of_Helen.jpg" },
+  { title:"Dama que descubre el pecho", author:"Tintoretto", period:"Renacimiento",
+    wikiTitle:"A Lady Baring Her Breasts",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Domenico_Tintoretto_028.jpg/500px-Domenico_Tintoretto_028.jpg" },
+
+  // MANIERISMO
+  { title:"Caída de Ícaro", author:"Pieter Bruegel el Viejo", period:"Manierismo",
+    wikiTitle:"Landscape with the Fall of Icarus",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Pieter_Bruegel_de_Oude_-_De_val_van_Icarus.jpg/500px-Pieter_Bruegel_de_Oude_-_De_val_van_Icarus.jpg" },
+  { title:"Proverbios Flamencos", author:"Pieter Bruegel el Viejo", period:"Manierismo",
+    wikiTitle:"Netherlandish Proverbs",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Pieter_Brueghel_the_Elder_-_The_Dutch_Proverbs_-_Google_Art_Project.jpg/500px-Pieter_Brueghel_the_Elder_-_The_Dutch_Proverbs_-_Google_Art_Project.jpg" },
+  { title:"El entierro del conde de Orgaz", author:"El Greco", period:"Manierismo",
+    wikiTitle:"The Burial of the Count of Orgaz",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/El_Greco_-_The_Burial_of_the_Count_of_Orgaz.JPG/400px-El_Greco_-_The_Burial_of_the_Count_of_Orgaz.JPG" },
+  { title:"Visión del Apocalipsis", author:"El Greco", period:"Manierismo",
+    wikiTitle:"The Vision of Saint John",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/b/b4/The_Vision_of_Saint_John_MET_DT1052.jpg" },
+
+  // BARROCO
+  { title:"Cabeza de Medusa", author:"Caravaggio", period:"Barroco",
+    wikiTitle:"Medusa (Caravaggio)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Medusa_by_Caravaggio.jpg/400px-Medusa_by_Caravaggio.jpg" },
+  { title:"Baco adolescente", author:"Caravaggio", period:"Barroco",
+    wikiTitle:"Sick Bacchus",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/9/96/Baco%2C_por_Caravaggio.jpg" },
+  { title:"La Ronda Nocturna", author:"Rembrandt", period:"Barroco",
+    wikiTitle:"The Night Watch",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/The_Night_Watch_-_HD.jpg/500px-The_Night_Watch_-_HD.jpg" },
+  { title:"Chica con el arete de perla", author:"Vermeer", period:"Barroco",
+    wikiTitle:"Girl with a Pearl Earring",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/1665_Girl_with_a_Pearl_Earring.jpg/400px-1665_Girl_with_a_Pearl_Earring.jpg" },
+  { title:"Las Meninas", author:"Diego Velázquez", period:"Barroco",
+    wikiTitle:"Las Meninas",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Las_Meninas_01.jpg/420px-Las_Meninas_01.jpg" },
+
+  // NEOCLÁSICO
+  { title:"El Parnaso", author:"Nicolas Poussin", period:"Neoclásico",
+    wikiTitle:"Parnassus (Poussin, Madrid)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/3/3f/El_Parnaso_%28Poussin%29.jpg" },
+  { title:"Retrato de Madame Récamier", author:"François Gérard", period:"Neoclásico",
+    wikiTitle:"Portrait of Juliette Récamier (Gérard)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Fran%C3%A7ois_G%C3%A9rard_-_Portrait_de_Juliette_R%C3%A9camier%2C_n%C3%A9e_Bernard_%281777-1849%29_-_mus%C3%A9e_Carnavalet.jpg/500px-Fran%C3%A7ois_G%C3%A9rard_-_Portrait_de_Juliette_R%C3%A9camier%2C_n%C3%A9e_Bernard_%281777-1849%29_-_mus%C3%A9e_Carnavalet.jpg" },
+  { title:"El juramento de los Horacios", author:"Jacques-Louis David", period:"Neoclásico",
+    wikiTitle:"Oath of the Horatii",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Jacques-Louis_David%2C_Le_Serment_des_Horaces.jpg/500px-Jacques-Louis_David%2C_Le_Serment_des_Horaces.jpg" },
+
+  // ROMANTICISMO
+  { title:"Saturno devorando a su hijo", author:"Goya", period:"Romanticismo",
+    wikiTitle:"Saturn Devouring His Son",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Francisco_de_Goya%2C_Saturno_devorando_a_su_hijo_%281819-1823%29.jpg/380px-Francisco_de_Goya%2C_Saturno_devorando_a_su_hijo_%281819-1823%29.jpg" },
+  { title:"La Maja desnuda", author:"Goya", period:"Romanticismo",
+    wikiTitle:"La maja desnuda",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Goya_Maja_naga2.jpg/500px-Goya_Maja_naga2.jpg" },
+  { title:"El quitasol", author:"Goya", period:"Romanticismo",
+    wikiTitle:"The Parasol",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Francisco_de_Goya_-_El_quitasol.jpg/500px-Francisco_de_Goya_-_El_quitasol.jpg" },
+  { title:"Tormenta de nieve en el mar", author:"J.M.W. Turner", period:"Romanticismo",
+    wikiTitle:"Snow Storm: Steam-Boat off a Harbour's Mouth",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Joseph_Mallord_William_Turner_-_Snow_Storm_-_Steam-Boat_off_a_Harbour%27s_Mouth.jpg/500px-Joseph_Mallord_William_Turner_-_Snow_Storm_-_Steam-Boat_off_a_Harbour%27s_Mouth.jpg" },
+  { title:"Caminante sobre el mar de nubes", author:"Caspar David Friedrich", period:"Romanticismo",
+    wikiTitle:"Wanderer above the Sea of Fog",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Caspar_David_Friedrich_-_Wanderer_above_the_sea_of_fog.jpg/380px-Caspar_David_Friedrich_-_Wanderer_above_the_sea_of_fog.jpg" },
+  { title:"La balsa de la Medusa", author:"Théodore Géricault", period:"Romanticismo",
+    wikiTitle:"The Raft of the Medusa",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/JEAN_LOUIS_TH%C3%89ODORE_G%C3%89RICAULT_-_La_Balsa_de_la_Medusa_%28Louvre_Paris%2C_1818-19%29.jpg/500px-JEAN_LOUIS_TH%C3%89ODORE_G%C3%89RICAULT_-_La_Balsa_de_la_Medusa_%28Louvre_Paris%2C_1818-19%29.jpg" },
+  { title:"La Libertad guiando al pueblo", author:"Eugène Delacroix", period:"Romanticismo",
+    wikiTitle:"Liberty Leading the People",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Eug%C3%A8ne_Delacroix_-_Le_28_Juillet._La_Libert%C3%A9_guidant_le_peuple.jpg/500px-Eug%C3%A8ne_Delacroix_-_Le_28_Juillet._La_Libert%C3%A9_guidant_le_peuple.jpg" },
+  { title:"Matanza de Quíos", author:"Eugène Delacroix", period:"Romanticismo",
+    wikiTitle:"Scene from the Massacres of Chios",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Eug%C3%A8ne_Delacroix_-_Le_Massacre_de_Scio.jpg/330px-Eug%C3%A8ne_Delacroix_-_Le_Massacre_de_Scio.jpg" },
+  { title:"El desesperado", author:"Gustave Courbet", period:"Romanticismo",
+    wikiTitle:"The Desperate Man",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/8/8f/Gustave_Courbet_-_Le_D%C3%A9sesp%C3%A9r%C3%A9_%281843%29.jpg" },
+
+  // IMPRESIONISMO
+  { title:"Impresión, sol naciente", author:"Claude Monet", period:"Impresionismo",
+    wikiTitle:"Impression, Sunrise",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Monet_-_Impression%2C_Sunrise.jpg/500px-Monet_-_Impression%2C_Sunrise.jpg" },
+  { title:"Mujer con sombrilla", author:"Claude Monet", period:"Impresionismo",
+    wikiTitle:"Woman with a Parasol – Madame Monet and Her Son",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Claude_Monet_-_Woman_with_a_Parasol_-_Madame_Monet_and_Her_Son_-_Google_Art_Project.jpg/400px-Claude_Monet_-_Woman_with_a_Parasol_-_Madame_Monet_and_Her_Son_-_Google_Art_Project.jpg" },
+  { title:"Los Nenúfares", author:"Claude Monet", period:"Impresionismo",
+    wikiTitle:"Water Lilies (Monet series)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Claude_Monet_-_Water_Lilies_-_1906%2C_Ryerson.jpg/500px-Claude_Monet_-_Water_Lilies_-_1906%2C_Ryerson.jpg" },
+  { title:"Jóvenes tocando el piano", author:"Pierre-Auguste Renoir", period:"Impresionismo",
+    wikiTitle:"Young Girls at the Piano",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/7/73/Auguste_Renoir_-_Young_Girls_at_the_Piano_-_Google_Art_Project.jpg" },
+  { title:"El columpio", author:"Pierre-Auguste Renoir", period:"Impresionismo",
+    wikiTitle:"The Swing (Renoir)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Pierre-Auguste_Renoir_-_The_Swing.jpg/400px-Pierre-Auguste_Renoir_-_The_Swing.jpg" },
+  { title:"La clase de ballet", author:"Edgar Degas", period:"Impresionismo",
+    wikiTitle:"The Ballet Class (Degas, Musée d'Orsay)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Edgar_Degas_-_The_Ballet_Class_-_Wikimedia.jpg/500px-Edgar_Degas_-_The_Ballet_Class_-_Wikimedia.jpg" },
+  { title:"Mujer peinándose", author:"Edgar Degas", period:"Impresionismo",
+    wikiTitle:"Woman Combing Her Hair (Degas, Hermitage)",
+    fallbackImg:"https://elbarcoazul.wordpress.com/wp-content/uploads/2015/06/degas1.jpg" },
+  { title:"Bailarina basculando", author:"Edgar Degas", period:"Impresionismo",
+    wikiTitle:"Dancer Tilting (Degas)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/9/95/Edgar_Degas_-_Balan%C3%A7ant_danseurs.jpg" },
+  { title:"Mujer secándose después del baño", author:"Edgar Degas", period:"Impresionismo",
+    wikiTitle:"Mujer secandose",
+    fallbackImg:"https://www.1st-art-gallery.com/media/catalog/product/cache/a67918ceb14cd34227a9a3ea0f98d29a/paintingsL/147895/after-the-bath-woman-drying-he.webp" },
+
+  // POSTIMPRESIONISMO
+  { title:"Noche estrellada", author:"Vincent van Gogh", period:"Postimpresionismo",
+    wikiTitle:"The Starry Night",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/500px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg" },
+  { title:"Los girasoles", author:"Vincent van Gogh", period:"Postimpresionismo",
+    wikiTitle:"Sunflowers (Van Gogh series)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Vincent_van_Gogh_-_Sunflowers_-_VGM_F458.jpg/400px-Vincent_van_Gogh_-_Sunflowers_-_VGM_F458.jpg" },
+  { title:"Mujeres de Tahití", author:"Paul Gauguin", period:"Postimpresionismo",
+    wikiTitle:"Femmes de Tahiti",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/7/73/Paul_Gauguin_056.jpg" },
+  { title:"El sueño", author:"Henri Rousseau", period:"Postimpresionismo",
+    wikiTitle:"The Dream (Rousseau)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Henri_Rousseau_-_The_Dream.jpg/500px-Henri_Rousseau_-_The_Dream.jpg" },
+  { title:"Jugadores de cartas", author:"Paul Cézanne", period:"Postimpresionismo",
+    wikiTitle:"The Card Players",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Paul_C%C3%A9zanne%2C_The_Card_Players%2C_1892-95.jpg/500px-Paul_C%C3%A9zanne%2C_The_Card_Players%2C_1892-95.jpg" },
+  { title:"En el Moulin Rouge, el baile", author:"Henri de Toulouse-Lautrec", period:"Postimpresionismo",
+    wikiTitle:"Dance at the Moulin Rouge (Toulouse-Lautrec)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/d/d5/HenriDeToulouse-Lautrec-AtTheMoulinRouge-TheDance-1889-90-VR.jpg" },
+
+  // ART NOUVEAU
+  { title:"El beso", author:"Gustav Klimt", period:"Art Nouveau",
+    wikiTitle:"The Kiss (Klimt)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/The_Kiss_-_Gustav_Klimt_-_Google_Cultural_Institute.jpg/400px-The_Kiss_-_Gustav_Klimt_-_Google_Cultural_Institute.jpg" },
+  { title:"Madre e hijo", author:"Pablo Picasso", period:"Art Nouveau",
+    wikiTitle:"La Vie (Picasso)",
+    fallbackImg:"https://blocdejavier.wordpress.com/wp-content/uploads/2012/05/picasso-madre-e-hijo-saltimbanquis-1905.jpg" },
+  { title:"La sagrada familia", author:"Gaudi", period:"Art Nouveau",
+    wikiTitle:"La sagrada familia",
+    fallbackImg:"https://cdn.britannica.com/15/194815-050-08B5E7D1/Nativity-facade-Sagrada-Familia-cathedral-Barcelona-Spain.jpg" },
+  { title:"Casa Batlló", author:"Gaudi", period:"Art Nouveau",
+    wikiTitle:"Casa Batlló",
+    fallbackImg:"https://previews.123rf.com/images/jarino47/jarino471706/jarino47170600094/81025717-barcelona-spain-april-20-house-casa-batllo-designed-by-antoni-gaudi-on-april-20-2017-in.avif" },
+
+  // EXPRESIONISMO
+  { title:"El grito", author:"Edvard Munch", period:"Expresionismo",
+    wikiTitle:"The Scream",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Edvard_Munch%2C_1893%2C_The_Scream%2C_oil%2C_tempera_and_pastel_on_cardboard%2C_91_x_73_cm%2C_National_Gallery_of_Norway.jpg/380px-Edvard_Munch%2C_1893%2C_The_Scream%2C_oil%2C_tempera_and_pastel_on_cardboard%2C_91_x_73_cm%2C_National_Gallery_of_Norway.jpg" },
+  { title:"Senecio", author:"Paul Klee", period:"Expresionismo",
+    wikiTitle:"Senecio (Klee)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Klee-Senecio.JPG/400px-Klee-Senecio.JPG" },
+  { title:"El Violinista", author:"Marc Chagall", period:"Expresionismo",
+    wikiTitle:"The Green Violinist",
+    fallbackImg:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlxjhUNNKbtsfzxtTjAjxgtgvpZH30XzaJWA&s" },
+  { title:"La novia del viento", author:"Oskar Kokoschka", period:"Expresionismo",
+    wikiTitle:"The Bride of the Wind",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Oskar_Kokoschka_-_The_Bride_of_the_Wind.jpg/500px-Oskar_Kokoschka_-_The_Bride_of_the_Wind.jpg" },
+
+  // CUBISMO
+  { title:"El Guernica", author:"Pablo Picasso", period:"Cubismo",
+    wikiTitle:"Guernica (Picasso)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/en/7/74/PicassoGuernica.jpg" },
+  { title:"Las señoritas de Avignon", author:"Pablo Picasso", period:"Cubismo",
+    wikiTitle:"Les Demoiselles d'Avignon",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/en/4/4c/Les_Demoiselles_d%27Avignon.jpg" },
+  { title:"Retrato de Picasso", author:"Juan Gris", period:"Cubismo",
+    wikiTitle:"Portrait of Pablo Picasso (Juan Gris)",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/8/81/JuanGris.Portrait_of_Picasso.jpg" },
+  { title:"Violín y periódico", author:"Georges Braque", period:"Cubismo",
+    wikiTitle:"Violin and Newspaper (Braque)",
+    fallbackImg:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0Qs6qk3Y7hFmriO9V4aLJA6uXwAen9M_e4A&s" },
+  { title:"Violín y guitarra", author:"Juan Gris", period:"Cubismo",
+    wikiTitle:"Violin and guitar",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/7/77/Juan_Gris_-_Violon_et_guitare.jpg" },
+  { title:"Frutero", author:"Braque", period:"Cubismo",
+    wikiTitle:"Frutero",
+    fallbackImg:"https://wahooart.com/A55A04/w.nsf/O/BRUE-8LHW4N/$File/GEORGES-BRAQUE-FRUIT-DISH.JPG" },
+
+  // DADAÍSMO
+  { title:"Mona Lisa con moustache", author:"Marcel Duchamp", period:"Dadaísmo",
+    wikiTitle:"L.H.O.O.Q.",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Marcel_Duchamp%2C_1919%2C_L.H.O.O.Q.jpg/380px-Marcel_Duchamp%2C_1919%2C_L.H.O.O.Q.jpg" },
+  { title:"Rueda de bicicleta", author:"Marcel Duchamp", period:"Dadaísmo",
+    wikiTitle:"Bicycle Wheel",
+    fallbackImg:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiE8txM9OpJjvgZSc8IqUlAAkRyG-HIGm0PA&s" },
+
+  // SURREALISMO
+  { title:"La persistencia de la memoria", author:"Salvador Dalí", period:"Surrealismo",
+    wikiTitle:"The Persistence of Memory",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/en/d/dd/The_Persistence_of_Memory.jpg" },
+  { title:"Jirafa en llamas", author:"Salvador Dalí", period:"Surrealismo",
+    wikiTitle:"Burning Giraffe",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/en/e/e6/The_Burning_Giraffe.jpg" },
+  { title:"El hijo del hombre", author:"René Magritte", period:"Surrealismo",
+    wikiTitle:"The Son of Man",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/en/e/e5/Magritte_TheSonOfMan.jpg" },
+  { title:"El carnaval del arlequín", author:"Joan Miró", period:"Surrealismo",
+    wikiTitle:"The Harlequin's Carnival",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/en/d/d0/Joan_Mir%C3%B3_-_The_Harlequin%27s_Carnival.jpg" },
+  { title:"Las dos Fridas", author:"Frida Kahlo", period:"Surrealismo",
+    wikiTitle:"The Two Fridas",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/en/f/f9/The_Two_Fridas.jpg" },
+  { title:"El cazador", author:"Frida Kahlo", period:"Surrealismo",
+    wikiTitle:"The Wounded Deer",
+    fallbackImg:"https://www.singulart.com/blog/wp-content/uploads/2019/11/the-wounded-deer.jpg" },
+  { title:"Creación de las aves", author:"Remedios Varo", period:"Surrealismo",
+    wikiTitle:"Nigger 2",
+    fallbackImg:"https://historia-arte.com/_/eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpbSI6WyJcL2FydHdvcmtcL2ltYWdlRmlsZVwvNWViNjg0NDU0MGU4Yi5qcGciLCJyZXNpemUsODAwIl19.KXPQHf-1ZjCXYJXhk4by5K1FXtky5SNJY3ZywnHA6z8.jpg" },
+  { title:"Papilla estelar", author:"Remedios Varo", period:"Surrealismo",
+    wikiTitle:"Nigger 3",
+    fallbackImg:"https://historia-arte.com/_/eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpbSI6WyJcL2FydHdvcmtcL2ltYWdlRmlsZVwvNWVkNTA2MDU3MzJmYy5qcGciLCJyZXNpemUsODAwIl19.GqF-nqw2pIAkKAeMqLEeHEhipaqpkNZzUOQTtQAOh2I.jpg" },
+
+  // POP ART
+  { title:"Serie Marilyn Monroe", author:"Andy Warhol", period:"Pop Art",
+    wikiTitle:"neckhurt",
+    fallbackImg:"https://static.wikia.nocookie.net/aesthetics/images/d/d9/MarylinAndy.jpg/revision/latest?cb=20230924205758" },
+  { title:"Britto garden", author:"Romero Britto", period:"Pop Art",
+    wikiTitle:"negers",
+    fallbackImg:"https://uploads2.wikiart.org/images/romero-britto/britto-garden-2000.jpg" },
+
+  // ART DÉCO
+  { title:"Autorretrato en un Bugatti verde", author:"Tamara de Lempicka", period:"Art Déco",
+    wikiTitle:"Auto Portrait (Tamara in a Green Bugatti)",
+    fallbackImg:"https://historia-arte.com/_/eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpbSI6WyJcL2FydHdvcmtcL2ltYWdlRmlsZVwvbGVtcGlja2EtYnVnYXR0aS5qcGciLCJyZXNpemUsODAwIl19.8-J_udiIyAF1HuJJVdUmhlt9R3LhpTbp64WToTjgN38.jpg" },
+  { title:"Vendedora de flores", author:"Diego Rivera", period:"Art Déco",
+    wikiTitle:"The Flower Carrier",
+    fallbackImg:"https://images.nortonsimon.org/iipsrv/iipsrv.fcgi?QLT=100&IIIF=P198023.jpf/full/!668,1002/0/default.jpg" },
+
+  // FUTURISMO
+  { title:"Dinamismo de un ciclista", author:"Umberto Boccioni", period:"Futurismo",
+    wikiTitle:"Dynamism of a Cyclist",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Umberto_Boccioni_Dynamism_of_a_Cyclist.JPG/500px-Umberto_Boccioni_Dynamism_of_a_Cyclist.JPG" },
+
+  // MINIMALISMO
+  { title:"Composición en rojo, azul y amarillo", author:"Piet Mondrian", period:"Minimalismo",
+    wikiTitle:"Composition II in Red, Blue, and Yellow",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Piet_Mondriaan%2C_1930_-_Mondrian_Composition_II_in_Red%2C_Blue%2C_and_Yellow.jpg/400px-Piet_Mondriaan%2C_1930_-_Mondrian_Composition_II_in_Red%2C_Blue%2C_and_Yellow.jpg" },
+
+  // ABSTRACCIÓN LÍRICA
+  { title:"Línea transversal", author:"Wassily Kandinsky", period:"Abstracción Lírica",
+    wikiTitle:"Composition VIII",
+    fallbackImg:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSg_svAPo1LHgzY01b8HvalC6JmIvh_yyP0sQ&s" },
+  { title:"En blanco II", author:"Wassily Kandinsky", period:"Abstracción Lírica",
+    wikiTitle:"neck hurts",
+    fallbackImg:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSC-e4pPSwP9ET2kPSNlxi0ghgNF0FiZlkVFA&s" },
+
+  // MURALISMO MEXICANO
+  { title:"Sueño de una tarde dominical en la Alameda Central", author:"Diego Rivera", period:"Muralismo Mexicano",
+    wikiTitle:"Dream of a Sunday Afternoon in Alameda Park",
+    fallbackImg:"https://sothebys-com.brightspotcdn.com/dims4/default/586313f/2147483647/strip/true/crop/13269x3478+0+0/resize/2000x524!/quality/90/?url=http%3A%2F%2Fsothebys-brightspot.s3.amazonaws.com%2Fdotcom%2Ff8%2F61%2F3352ec3a4468821f33f835f2aac4%2Fdiego-rivera-sueno-de-una-tarde-dominical-en-la-alameda-central.JPG" },
+  { title:"El hombre controlador del universo", author:"Diego Rivera", period:"Muralismo Mexicano",
+    wikiTitle:"Man at the Crossroads",
+    fallbackImg:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTKkyFGBh4ZnrVkDPYxUEMLUy4CURzyowBURw&s" },
+  { title:"Nueva democracia", author:"David Alfaro Siqueiros", period:"Muralismo Mexicano",
+    wikiTitle:"Nueva Democracia",
+    fallbackImg:"https://museopalaciodebellasartes.rgbestudio.com/wp-content/uploads/2023/06/Nueva_democracia-1024x450.jpg" },
+  { title:"El coronelazo", author:"David Alfaro Siqueiros", period:"Muralismo Mexicano",
+    wikiTitle:"El coronelazo",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/d/d0/%27El_Coronelazo_%28self-portrait%29%27_%281945%29_by_David_Alfaro_Siqueiros_-_Museo_Nacional_de_Artes_-_Mexico_2024.jpg" },
+  { title:"Hombre en llamas", author:"José Clemente Orozco", period:"Muralismo Mexicano",
+    wikiTitle:"Man of Fire (mural)",
+    fallbackImg:"https://http2.mlstatic.com/D_NQ_NP_2X_817490-MLM41746685742_052020-F.webp" },
+  { title:"Katharsis", author:"José Clemente Orozco", period:"Muralismo Mexicano",
+    wikiTitle:"Katharsis (Orozco)",
+    fallbackImg:"https://historia-arte.com/_/eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpbSI6WyJcL2FydHdvcmtcL2ltYWdlRmlsZVwvMzlmZGFhYWRmODEwNjI1MzQwMjc4Mjk2ZmU5Y2U4M2QuanBnIiwicmVzaXplLDgwMCJdfQ.bySNy6gqbJX6koq2Rt5Fvx-HrljVekbNXOpzBd8AiOg.jpg" },
+  { title:"Miguel Hidalgo (mural)", author:"José Clemente Orozco", period:"Muralismo Mexicano",
+    wikiTitle:"José Clemente Orozco",
+    fallbackImg:"https://cdn.britannica.com/41/213441-138-1FCDD78C/Top-questions-answers-Miguel-Hidalgo-y-Costilla.jpg" },
+  { title:"La marcha de la humanidad", author:"Siquerios", period:"Muralismo Mexicano",
+    wikiTitle:"Nigger 4",
+    fallbackImg:"https://uploads4.wikiart.org/images/david-alfaro-siqueiros/the-march-of-humanity-1971-1.jpg!Large.jpg" },
+  { title:"El pueblo a la universidad la universidad al pueblo", author:"Siquerios", period:"Muralismo Mexicano",
+    wikiTitle:"Nigger 5",
+    fallbackImg:"https://whc.unesco.org/uploads/thumbs/site_1250_0002-500--20110920204515.jpg" },
+
+  // ARTE MEXICANO
+  { title:"La Catrina", author:"José Guadalupe Posada", period:"Arte Mexicano",
+    wikiTitle:"La Catrina",
+    fallbackImg:"https://1001reasonstolearnspanish.com/wp-content/uploads/2015/11/la-catrina.jpg" },
+  { title:"Calavera Maderista", author:"José Guadalupe Posada", period:"Arte Mexicano",
+    wikiTitle:"La Calavera Garbancera",
+    fallbackImg:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQSEgK_PWrDjcEkXTstfaNLAx4WsQkWi45siw&s" },
+  { title:"Erupción del Paricutín", author:"Dr. Atl (Gerardo Murillo)", period:"Arte Mexicano",
+    wikiTitle:"Doctor Atl",
+    fallbackImg:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Dr_atl_erupcion_paricutin.jpg/400px-Dr_atl_erupcion_paricutin.jpg" },
+  { title:"Dualidad (mural)", author:"Rufino Tamayo", period:"Arte Mexicano",
+    wikiTitle:"Rufino Tamayo",
+    fallbackImg:"https://img.atlasobscura.com/LTNPRmK7zdKsnkRl3RnmEIbwMgm8fTHctRZu8vOFbGM/rt:fit/h:400/q:81/sm:1/scp:1/ar:1/aHR0cHM6Ly9hdGxh/cy1kZXYuczMuYW1h/em9uYXdzLmNvbS91/cGxvYWRzL3BsYWNl/X2ltYWdlcy8zNmNk/NDJiZS1lYzQ2LTQ1/MWUtYjA2OC00NWMx/NDg2OTY5NzcyYWU3/YWZmMmFmMzEwZDFi/MjFfMjk2ODkzMTU3/NjhfNzMzNjkyOTA2/Nl96LmpwZw.jpg" },
+  { title:"Vista del Popocatépetl", author:"Dr. Alt (Gerardo Murillo)", period:"Arte Mexicano",
+    wikiTitle:"Nigger 6",
+    fallbackImg:"https://lh3.googleusercontent.com/ci/AL18g_R5to6iRYJRHYrmSR3CsGIeGxQvXYyFubazg9mdqkGTLDR8kgrSJ8hLiEwSXn3vG8yfYs6D=s1200" },
+  { title:"Paisaje con el Iztaccíhuatl", author:"Dr. Alt (Gerardo Murillo)", period:"Arte Mexicano",
+    wikiTitle:"Nigger 7",
+    fallbackImg:"https://lh6.googleusercontent.com/proxy/w9aYY-JM2NpPNDZh52dE15rU9NwW5cxzZ6iZAzKCEqk91Y6rdXy3TUdqyO1TE-ccQEUkLFZX9M86P9lBkc_yte6ozrM4rg" },
+  { title:"Retrato de Olga", author:"Rufino Tamayo", period:"Arte Mexicano",
+    wikiTitle:"Nigger 8",
+    fallbackImg:"https://cdn.prod.website-files.com/5f3576fec2caeb654f6deb22/61a58a7008c4421c3a45da45_Tamayo%2C%20Rufino-Retrato%20de%20Olga%2C%201964.jpg" },
+  { title:"Autorretrato", author:"Jose Luis Cuevas", period:"Arte Mexicano",
+    wikiTitle:"Nigger 9",
+    fallbackImg:"https://www.imer.mx/rmi/wp-content/uploads/sites/3/2016/02/01Autorretrato-durante-la-relectura-de-la-metamorfosis-de-kafka-228x300.jpg" },
+];
+
+// ================================================================
+// WIKIPEDIA THUMBNAIL API — fetches CORS-safe thumbnail URLs
+// Uses origin=* to enable cross-origin access
+// ================================================================
+const thumbCache = {}; // wikiTitle -> thumbnail URL
+
+async function fetchWikiThumbnails(titles) {
+  // Batch in groups of 30
+  const batchSize = 30;
+  for (let i = 0; i < titles.length; i += batchSize) {
+    const batch = titles.slice(i, i + batchSize);
+    const joined = batch.map(t => encodeURIComponent(t)).join('|');
+    const url = `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=thumbnail&pithumbsize=600&titles=${joined}&origin=*`;
+    try {
+      const resp = await fetch(url);
+      const data = await resp.json();
+      const pages = data.query?.pages || {};
+      Object.values(pages).forEach(page => {
+        if (page.thumbnail?.source && page.title) {
+          thumbCache[page.title] = page.thumbnail.source;
+        }
+      });
+    } catch(e) {
+      // silently skip — we'll use fallback URLs
+    }
+    // Update progress bar
+    const pct = Math.min(100, Math.round(((i + batchSize) / titles.length) * 100));
+    const fill = document.getElementById('load-fill');
+    if (fill) fill.style.width = pct + '%';
+  }
+}
+
+// ================================================================
+// IMAGE LOADING — try API URL → fallback with no-referrer
+// ================================================================
+function getImgUrl(artwork) {
+  return thumbCache[artwork.wikiTitle] || artwork.fallbackImg;
+}
+
+function loadImage(artwork, container) {
+  container.innerHTML = `<div class="img-placeholder">Cargando imagen…</div>`;
+  const primaryUrl = getImgUrl(artwork);
+  tryLoadImg([primaryUrl, artwork.fallbackImg], 0, container, artwork.title, false);
+}
+
+function tryLoadImg(urls, idx, container, alt, noRef) {
+  // Filter out duplicates and nulls
+  const validUrls = [...new Set(urls.filter(Boolean))];
+  if (idx >= validUrls.length) {
+    if (!noRef && idx > 0) {
+      // Try again with no-referrer policy
+      tryLoadImg(validUrls, 0, container, alt, true);
+      return;
+    }
+    container.innerHTML = `<div class="img-placeholder" style="color:#c9922a">📷 Imagen no disponible</div>`;
+    return;
+  }
+  const img = document.createElement('img');
+  if (noRef) img.referrerPolicy = 'no-referrer';
+  img.onload = () => {
+    container.innerHTML = '';
+    container.appendChild(img);
+  };
+  img.onerror = () => tryLoadImg(validUrls, idx + 1, container, alt, noRef);
+  img.alt = alt;
+  img.src = validUrls[idx];
+}
+
+// ================================================================
+// PERIODS
+// ================================================================
+const ALL_PERIODS = [...new Set(ARTWORKS.map(a => a.period))];
+let selectedPeriods = new Set(ALL_PERIODS);
+
+function buildPeriodsGrid() {
+  const grid = document.getElementById('periods-grid');
+  ALL_PERIODS.forEach(p => {
+    const count = ARTWORKS.filter(a => a.period === p).length;
+    const card = document.createElement('div');
+    card.className = 'period-card selected';
+    card.dataset.period = p;
+    card.onclick = () => togglePeriod(p, card);
+    card.innerHTML = `<div class="check">✓</div><div class="label">${p}</div><div class="count">${count}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+function togglePeriod(p, card) {
+  if (selectedPeriods.has(p)) { selectedPeriods.delete(p); card.classList.remove('selected'); card.querySelector('.check').textContent = ''; }
+  else { selectedPeriods.add(p); card.classList.add('selected'); card.querySelector('.check').textContent = '✓'; }
+}
+
+function selectAll(state) {
+  document.querySelectorAll('.period-card').forEach(card => {
+    const p = card.dataset.period;
+    if (state) { selectedPeriods.add(p); card.classList.add('selected'); card.querySelector('.check').textContent = '✓'; }
+    else { selectedPeriods.delete(p); card.classList.remove('selected'); card.querySelector('.check').textContent = ''; }
+  });
+}
+
+// ================================================================
+// QUIZ STATE
+// ================================================================
+let quizQuestions = [], currentQ = 0, score = 0, answered = false, quizHistory = [];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function getRandom(arr, n) { return shuffle(arr).slice(0, n); }
+
+function makeQuestion(artwork, type, pool) {
+  let questionText, correctAnswer, wrongPool, badge;
+  if (type === 'title') {
+    questionText = `¿Cómo se llama esta obra?`;
+    correctAnswer = artwork.title;
+    wrongPool = [...new Set(pool.filter(a=>a!==artwork).map(a=>a.title))];
+    badge = 'Título';
+  } else if (type === 'author') {
+    questionText = `¿Quién creó esta obra?`;
+    correctAnswer = artwork.author;
+    wrongPool = [...new Set(pool.filter(a=>a!==artwork).map(a=>a.author))];
+    badge = 'Autor';
+  } else {
+    questionText = `¿A qué corriente artística pertenece esta obra?`;
+    correctAnswer = artwork.period;
+    wrongPool = [...new Set(pool.filter(a=>a.period!==artwork.period).map(a=>a.period))];
+    badge = 'Corriente';
+  }
+  const options = shuffle([correctAnswer, ...getRandom(wrongPool, 3)]);
+  return { artwork, type, questionText, correctAnswer, options, badge };
+}
+
+function startQuiz() {
+  const numArtworks = Math.min(parseInt(document.getElementById('num-artworks').value)||8, 30);
+  const pool = ARTWORKS.filter(a => selectedPeriods.has(a.period));
+  if (pool.length < 4) { alert('Por favor selecciona al menos un período con suficientes obras.'); return; }
+
+  const selected = getRandom(pool, Math.min(numArtworks, pool.length));
+  quizQuestions = [];
+  selected.forEach(artwork => {
+    quizQuestions.push(makeQuestion(artwork,'title',pool));
+    quizQuestions.push(makeQuestion(artwork,'author',pool));
+    quizQuestions.push(makeQuestion(artwork,'period',pool));
+  });
+
+  currentQ = 0; score = 0;
+  quizHistory = selected.map(a => ({ artwork: a, results: [] }));
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('results-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'block';
+  document.getElementById('q-total').textContent = quizQuestions.length;
+  renderQuestion();
+}
+
+// ================================================================
+// RENDER QUESTION
+// ================================================================
+function renderQuestion() {
+  const q = quizQuestions[currentQ];
+  answered = false;
+
+  const artIdx = Math.floor(currentQ / 3);
+  const subIdx = currentQ % 3;
+
+  document.getElementById('q-num').textContent = currentQ + 1;
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('progress-fill').style.width = ((currentQ / quizQuestions.length) * 100) + '%';
+
+  // Artwork progress dots
+  const totalArtworks = quizQuestions.length / 3;
+  const dotsEl = document.getElementById('artwork-dots');
+  dotsEl.innerHTML = '';
+  for (let i = 0; i < totalArtworks; i++) {
+    const d = document.createElement('div');
+    d.className = 'art-dot' + (i < artIdx ? ' done' : i === artIdx ? ' active' : '');
+    dotsEl.appendChild(d);
+  }
+  document.getElementById('artwork-name-label').textContent = `Obra ${artIdx+1} de ${totalArtworks}`;
+
+  // Sub-question pips
+  for (let i = 0; i < 3; i++) {
+    const pip = document.getElementById('pip-' + i);
+    pip.className = 'subq-pip' + (i < subIdx ? ' done' : i === subIdx ? ' active' : '');
+  }
+  document.getElementById('subq-label').textContent = ['Pregunta 1/3: Título','Pregunta 2/3: Autor','Pregunta 3/3: Corriente'][subIdx];
+
+  // Only load image on first question of each artwork
+  if (subIdx === 0) {
+    loadImage(q.artwork, document.getElementById('artwork-display'));
+  }
+
+  document.getElementById('q-type-badge').textContent = q.badge;
+  document.getElementById('question-text').innerHTML = q.questionText;
+
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML = '';
+  const letters = ['A','B','C','D'];
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.innerHTML = `<div class="opt-letter">${letters[i]}</div><span>${opt}</span>`;
+    btn.onclick = () => selectAnswer(opt, btn);
+    grid.appendChild(btn);
+  });
+
+  document.getElementById('feedback-bar').style.display = 'none';
+  document.getElementById('feedback-bar').className = 'feedback-bar';
+  document.getElementById('next-btn-row').style.display = 'none';
+}
+
+function selectAnswer(chosen, btn) {
+  if (answered) return;
+  answered = true;
+
+  const q = quizQuestions[currentQ];
+  const correct = chosen === q.correctAnswer;
+
+  document.querySelectorAll('.option-btn').forEach(b => {
+    b.disabled = true;
+    if (b.querySelector('span').textContent === q.correctAnswer) b.classList.add('correct');
+  });
+  if (!correct) { btn.classList.add('wrong'); btn.classList.remove('correct'); btn.classList.add('shake'); }
+  if (correct) score++;
+
+  const artIdx = Math.floor(currentQ / 3);
+  quizHistory[artIdx].results.push({ badge: q.badge, correct, answer: q.correctAnswer });
+
+  const fb = document.getElementById('feedback-bar');
+  fb.className = 'feedback-bar ' + (correct ? 'correct' : 'wrong');
+  fb.style.display = 'block';
+  fb.innerHTML = correct
+    ? `<strong>✓ ¡Correcto!</strong>${q.badge}: <strong>${q.correctAnswer}</strong>`
+    : `<strong>✗ Incorrecto.</strong> La respuesta correcta es <strong>${q.correctAnswer}</strong>`;
+
+  document.getElementById('next-btn-row').style.display = 'block';
+  document.getElementById('next-btn').textContent = currentQ === quizQuestions.length-1 ? 'Ver resultados →' : 'Siguiente →';
+  document.getElementById('score-display').textContent = score;
+}
+
+function nextQuestion() {
+  currentQ++;
+  if (currentQ >= quizQuestions.length) showResults();
+  else renderQuestion();
+}
+
+// ================================================================
+// RESULTS
+// ================================================================
+function showResults() {
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('results-screen').style.display = 'block';
+
+  const total = quizQuestions.length;
+  const pct = Math.round((score / total) * 100);
+
+  document.getElementById('final-score-num').innerHTML = `${score}<sub>/${total}</sub>`;
+  document.getElementById('score-circle').style.setProperty('--pct', `${pct}%`);
+  document.getElementById('stat-correct').textContent = score;
+  document.getElementById('stat-wrong').textContent = total - score;
+  document.getElementById('stat-pct').textContent = pct + '%';
+
+  const msgs = pct>=90 ? ['¡Maestro del Arte!','Conocimiento excepcional de la historia de la pintura.']
+              : pct>=70 ? ['¡Muy bien hecho!','Buen dominio de obras, autores y corrientes.']
+              : pct>=50 ? ['En progreso','Sigue practicando para mejorar tus resultados.']
+              : ['Sigue estudiando','Repasa las obras y vuelve a intentarlo.'];
+  document.getElementById('result-title').textContent = msgs[0];
+  document.getElementById('result-subtitle').textContent = msgs[1];
+
+  const list = document.getElementById('review-list');
+  list.innerHTML = '';
+  quizHistory.forEach(entry => {
+    const group = document.createElement('div');
+    group.className = 'review-artwork-group';
+
+    const imgUrl = getImgUrl(entry.artwork);
+    const header = document.createElement('div');
+    header.className = 'review-artwork-header';
+    header.innerHTML = `
+      <img class="review-img" referrerpolicy="no-referrer" src="${imgUrl}" alt="${entry.artwork.title}"
+        onerror="this.src='${entry.artwork.fallbackImg}'; this.referrerPolicy='no-referrer'; this.onerror=function(){this.style.opacity='0'}">
+      <div class="review-artwork-info">
+        <h4>${entry.artwork.title}</h4>
+        <p>${entry.artwork.author} · <em>${entry.artwork.period}</em></p>
+      </div>`;
+    group.appendChild(header);
+
+    const qs = document.createElement('div');
+    qs.className = 'review-questions';
+    entry.results.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'review-q-row';
+      row.innerHTML = `<span class="review-q-type">${r.badge}</span><span class="review-q-answer">${r.answer}</span><span class="review-q-result">${r.correct?'✅':'❌'}</span>`;
+      qs.appendChild(row);
+    });
+    group.appendChild(qs);
+    list.appendChild(group);
+  });
+}
+
+function backToSetup() {
+  document.getElementById('results-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'block';
+}
+
+// ================================================================
+// INIT — fetch Wikipedia thumbnails for all artworks at startup
+// ================================================================
+async function init() {
+  const allTitles = ARTWORKS.map(a => a.wikiTitle);
+  await fetchWikiThumbnails(allTitles);
+
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'block';
+  buildPeriodsGrid();
+}
+
+init();
+</script>
+</body>
+</html>
