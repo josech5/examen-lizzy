@@ -32,7 +32,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-text { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: #8a7550; margin-bottom: 0.5rem; }
   .loading-sub { font-size: 0.85rem; color: #b09060; }
-  .load-progress { margin-top: 1.5rem; height: 4px; background: #e8dfc8; border-radius: 2px; overflow: hidden; max-width: 300px; margin-left: auto; margin-right: auto; }
+  .load-progress { margin-top: 1.5rem; height: 4px; background: #e8dfc8; border-radius: 2px; overflow: hidden; max-width: 0px; margin-left: auto; margin-right: auto; }
   .load-fill { height: 100%; background: linear-gradient(to right, var(--gold-light), var(--gold)); border-radius: 2px; transition: width 0.3s ease; }
 
   /* SETUP */
@@ -178,7 +178,7 @@
     <div class="settings-row">
       <div class="setting-group">
         <label>Número de obras por quiz</label>
-        <input type="number" id="num-artworks" value="8" min="1" max="1000">
+        <input type="number" id="num-artworks" value="8" min="3" max="30">
       </div>
       <button class="btn-primary" onclick="startQuiz()">Comenzar Quiz →</button>
     </div>
