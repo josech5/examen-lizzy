@@ -761,7 +761,7 @@ function makeQuestion(artwork, type, pool) {
 function startQuiz() {
   const numArtworks = parseInt(document.getElementById('num-artworks').value) || 8;
   const pool = ARTWORKS.filter(a => selectedPeriods.has(a.period));
-  if (pool.length < 0) { alert('Por favor selecciona al menos un período con suficientes obras.'); return; }
+  if (pool.length < 4) { alert('Por favor selecciona al menos un período con suficientes obras.'); return; }
 
   const selected = getRandom(pool, Math.min(numArtworks, pool.length));
   quizQuestions = [];
