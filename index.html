@@ -178,7 +178,7 @@
     <div class="settings-row">
       <div class="setting-group">
         <label>Número de obras por quiz</label>
-        <input type="number" id="num-artworks" value="8" min="3">
+        <input type="number" id="num-artworks" value="8" min="1">
       </div>
       <button class="btn-primary" onclick="startQuiz()">Comenzar Quiz →</button>
     </div>
@@ -741,17 +741,17 @@ function makeQuestion(artwork, type, pool) {
   if (type === 'title') {
     questionText = `¿Cómo se llama esta obra?`;
     correctAnswer = artwork.title;
-    wrongPool = [...new Set(pool.filter(a=>a!==artwork).map(a=>a.title))];
+    wrongPool = [...new Set(ARTWORKS.filter(a => a.title !== correctAnswer).map(a => a.title))];
     badge = 'Título';
   } else if (type === 'author') {
     questionText = `¿Quién creó esta obra?`;
     correctAnswer = artwork.author;
-    wrongPool = [...new Set(pool.filter(a=>a!==artwork).map(a=>a.author))];
+    wrongPool = [...new Set(ARTWORKS.filter(a => a.author !== correctAnswer).map(a => a.author))];
     badge = 'Autor';
   } else {
     questionText = `¿A qué corriente artística pertenece esta obra?`;
     correctAnswer = artwork.period;
-    wrongPool = [...new Set(pool.filter(a=>a.period!==artwork.period).map(a=>a.period))];
+    wrongPool = [...new Set(ARTWORKS.filter(a => a.period !== correctAnswer).map(a => a.period))];
     badge = 'Corriente';
   }
   const options = shuffle([correctAnswer, ...getRandom(wrongPool, 3)]);
@@ -761,7 +761,7 @@ function makeQuestion(artwork, type, pool) {
 function startQuiz() {
   const numArtworks = parseInt(document.getElementById('num-artworks').value) || 8;
   const pool = ARTWORKS.filter(a => selectedPeriods.has(a.period));
-  if (pool.length < 4) { alert('Por favor selecciona al menos un período con suficientes obras.'); return; }
+  if (pool.length < 1) { alert('Por favor selecciona al menos un período.'); return; }
 
   const selected = getRandom(pool, Math.min(numArtworks, pool.length));
   quizQuestions = [];
